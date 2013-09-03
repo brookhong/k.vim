@@ -8,6 +8,7 @@ K.vim features VIM with key-value instant search from external dictionary(in Sta
 # Installation
 
 1. get and build `kv` tool from https://github.com/brookhong/kv
+1. copy kv or kv.exe to a folder in your path such as /usr/local/bin or C:\Windows\system32
 1. put k.vim to your .vim/plugin folder
 1. build or download dictionaries you need to some folder, and tell VIM where it is
 
@@ -21,10 +22,17 @@ I have shared some of my dictionaries here https://www.dropbox.com/sh/75leolu1ds
     let g:kdbDir = $HOME.'/kdb'
     " when press `<leader>,`, will translate word under the cursor, works for all kinds of files.
     let g:globalDBkeys = {
-          \ 'oxford-gb' : '<leader>,',
+          \ 'oxford' : '<leader>,',
           \ }
-    " when press `K` in normal mode or `C-j` in insert mode, will get referrence of function under the cursor, works only for php file.
-    " for file-type dictionaries, they must be named same as the file type.
+    " when press `K` in normal mode or `C-j` in insert mode, will get referrence of function under the cursor, works for php file or C file.
+    " for file-type dictionaries, the folder must be named same as the file type.
     let g:localDBkeys = {
           \ 'php' : ['K', '<C-j>'],
+          \ 'c' : ['K', '<C-j>'],
           \ }
+
+# Usage
+
+For global dictionaries, with cursor on a word, press the key you set in `g:globalDBkeys` to search.
+For file-type dictionaries, open a file, with cursor on a word, press the key you set in `g:localDBkeys` to search.
+The result is displayed in a split window, you can close it by `<Space>,` in normal mode.

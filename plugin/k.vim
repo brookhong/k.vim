@@ -1,6 +1,29 @@
 " vim: tabstop=2 shiftwidth=2 softtabstop=2 expandtab foldmethod=marker
 " ff=unix
 "
+" Copyright (c) 2013 Brook Hong
+
+" The MIT License
+
+" Permission is hereby granted, free of charge, to any person obtaining
+" a copy of this software and associated documentation files
+" (the "Software"), to deal in the Software without restriction,
+" including without limitation the rights to use, copy, modify,
+" merge, publish, distribute, sublicense, and/or sell copies of the
+" Software, and to permit persons to whom the Software is furnished
+" to do so, subject to the following conditions:
+
+" The above copyright notice and this permission notice shall be included
+" in all copies or substantial portions of the Software.
+
+" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+" OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+" MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+" IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+" CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+" TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+" SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 function! s:PatternName(fName)
   let l:fName = a:fName
   let l:fName = substitute(l:fName,'[','\\[',"g")
@@ -78,15 +101,17 @@ endfunction
 
 autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:k_console') == 1 | quit | endif
 
-autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', ">- K.VIM -<")<CR>
-autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'botri 10', ">- K.VIM -<")<CR>
-nnoremap <silent> <space>, :call k#CloseConsole(">- K.VIM -<")<CR>
-com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", ">- K.VIM -<", "", <q-args>)
+autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'botri 10', "- K.VIM -")<CR>
+autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "- K.VIM -")<CR>
+nnoremap <silent> <space>, :call k#CloseConsole("- K.VIM -")<CR>
+com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "- K.VIM -", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
 
 if !exists('g:kdbDir')
@@ -102,17 +127,20 @@ function! k#AutoLoadDict()
   for fn in a
     if getftype(fn) == 'file'
       let fn = substitute(fn,"\\","\/","g")
-      let l:type = substitute(fn,".*/","","")
-      let l:type = substitute(l:type,'\..*$',"","")
+      let l:type = substitute(fn,".*/\\(.*\\)/.*","\\1","")
       if has_key(g:globalDBkeys,l:type)
-        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('topleft 20', '>- K.VIM -<', '', '!kv query ".fn." '.expand('<cword>'))<CR>"
+        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('topleft 20', '- K.VIM -', '', '!kv query ".fn." '.expand('<cword>'))<CR>"
       else
         let l:localKeys = ['K', '<C-k>']
         if has_key(g:localDBkeys,l:type)
           let l:localKeys = g:localDBkeys[l:type]
         endif
-        exec "autocmd FileType ".l:type." nnoremap <buffer> <silent> ".l:localKeys[0]." :call k#ReadExCmdIntoConsole('topleft 30', '>- K.VIM -<', '".l:type."', '!kv query ".fn." '.expand('<cword>'))<CR>"
-        exec "autocmd FileType ".l:type." inoremap <buffer> <silent> ".l:localKeys[1]." <Esc>:call k#ReadExCmdIntoConsole('topleft 30', '>- K.VIM -<', '".l:type."', '!kv query ".fn." '.expand('<cword>'))<CR>a"
+        let l:actionToCall = ":call k#ReadExCmdIntoConsole('topleft 30', '- K.VIM -', '".l:type."', '!kv query ".fn." '.expand('<cword>'))"
+        exec "autocmd FileType ".l:type." nnoremap <buffer> <silent> ".l:localKeys[0]." :".l:actionToCall."<CR>"
+        exec "autocmd FileType ".l:type." inoremap <buffer> <silent> ".l:localKeys[1]." <Esc>:".l:actionToCall."<CR>a"
+        let l:cmd = substitute(l:type,".","\\U&","")
+        let l:actionToCall = substitute(l:actionToCall,"expand('<cword>')","<q-args>","")
+        exec "com! -nargs=* -complete=command -bar ".l:cmd." ".l:actionToCall
       endif
     endif
   endfor
