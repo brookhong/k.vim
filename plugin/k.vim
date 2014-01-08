@@ -37,6 +37,7 @@ function! s:FocusMyConsole(winOp, winName)
   let l:consoleWin = bufwinnr('^'.l:fName.'$')
   if(l:consoleWin == -1)
     execute "silent ".a:winOp." new ".l:fName
+    setlocal enc=utf-8
     setlocal buftype=nofile
     setlocal nobuflisted
     setlocal noswapfile
@@ -79,9 +80,10 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! k#RunMe(interpreter, winOp, winName)
+function! k#RunMe(interpreter, winOp, winName, ft)
   silent 1,$y
   call <SID>FocusMyConsole(a:winOp, a:winName)
+  exec "set ft=".a:ft
   exec "normal gg\"_dGP"
   silent exec '%!'.a:interpreter
   execute "normal \<c-w>p"
@@ -101,16 +103,18 @@ endfunction
 
 autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:k_console') == 1 | quit | endif
 
-autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'botri 10', "- K.VIM -")<CR>
-autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "- K.VIM -")<CR>
-nnoremap <silent> <space>, :call k#CloseConsole("- K.VIM -")<CR>
+autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>r :call k#RunMe('coffee -s', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -sbp', 'vert bel', "- K.VIM -", "javascript")<CR>
+autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "- K.VIM -", "")<CR>
+autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "- K.VIM -", "html")<CR>
+autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "- K.VIM -", "")<CR>
+nnoremap <silent> <space><leader> :call k#CloseConsole("- K.VIM -")<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "- K.VIM -", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
 
