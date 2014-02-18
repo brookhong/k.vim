@@ -24,28 +24,23 @@
 " TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 " SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-function! s:PatternName(fName)
-  let l:fName = a:fName
-  let l:fName = substitute(l:fName,'[','\\[',"g")
-  let l:fName = substitute(l:fName,']','\\]',"g")
-  let l:fName = substitute(l:fName,' ','\\ ',"g")
-  return l:fName
-endfunction
-
-function! s:FocusMyConsole(winOp, winName)
-  let l:fName = <SID>PatternName(a:winName)
-  let l:consoleWin = bufwinnr('^'.l:fName.'$')
-  if(l:consoleWin == -1)
-    execute "silent ".a:winOp." new ".l:fName
-    setlocal enc=utf-8
-    setlocal buftype=nofile
-    setlocal nobuflisted
-    setlocal noswapfile
-    setlocal noreadonly
-    let b:k_console = 1
-    let l:consoleWin = bufwinnr('^'.l:fName.'$')
+function! s:FocusMyConsole(winOp)
+  if !exists('b:lordWin')
+    let l:mw = bufnr('%')
+    if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
+      execute bufwinnr(b:consoleWin)."wincmd w"
+    else
+      execute "silent ".a:winOp." new [Scratch] for ".bufname(l:mw)."@".l:mw
+      setlocal enc=utf-8
+      setlocal buftype=nofile
+      setlocal nobuflisted
+      setlocal noswapfile
+      setlocal noreadonly
+      let b:lordWin = l:mw
+      let l:cw = bufnr('%')
+      call setbufvar(l:mw, "consoleWin", l:cw)
+    endif
   endif
-  execute l:consoleWin."wincmd w"
 endfunction
 
 function! s:RunCmd(exCmd)
@@ -62,17 +57,15 @@ function! s:RunCmd(exCmd)
   endif
 endfunction
 
-function! k#ReadExCmdIntoConsole(winOp,winName,ft,exCmd)
+function! k#ReadExCmdIntoConsole(winOp,ft,exCmd)
   let l:result = <SID>RunCmd(a:exCmd)
-  let l:tName = bufname('%')
-  call <SID>FocusMyConsole(a:winOp, a:winName)
+  let l:mw = bufnr('%')
+  call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
   exec "normal gg\"_dG"
   call append(0, l:result)
   execute "normal gg"
-  if(l:tName != a:winName)
-    execute "normal \<c-w>p"
-  endif
+  execute bufwinnr(l:mw)."wincmd w"
 endfunction
 
 function! k#ReadExCmd(exCmd)
@@ -80,42 +73,61 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! k#RunMe(interpreter, winOp, winName, ft)
-  silent 1,$y
-  call <SID>FocusMyConsole(a:winOp, a:winName)
+function! k#RunReg(reg, interpreter, winOp, ft)
+  call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
-  exec "normal gg\"_dGP"
+  exec "normal gg\"_dG\"".a:reg."P"
   silent exec '%!'.a:interpreter
   execute "normal \<c-w>p"
 endfunction
 
-function! k#CloseConsole(winName)
-  let l:fName = <SID>PatternName(a:winName)
-  let l:consoleWin = bufwinnr('^'.l:fName.'$')
-  if(l:consoleWin != -1)
-    let l:fName = <SID>PatternName(bufname('%'))
-    execute l:consoleWin."wincmd w"
-    bdelete
-    let l:cwn = bufwinnr('^'.l:fName.'$')
-    execute l:cwn."wincmd w"
+function! k#RunMe(interpreter, winOp, ft)
+  silent 1,$y k
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft)
+endfunction
+
+function! k#Run(winOp, ft)
+  call inputsave()
+  let l:interpreter = input("Run with:")
+  call inputrestore()
+  if l:interpreter != ""
+    call k#RunReg('k', l:interpreter, a:winOp, a:ft)
+  else
+    echomsg "Canceled as no interpreter was specified."
+  endif
+endfunction
+nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
+vnoremap <silent> <leader>r "ky:call k#Run('botri 30', '')<cr>
+
+function! k#CloseConsole()
+  if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
+    execute b:consoleWin."bd"
   endif
 endfunction
 
-autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:k_console') == 1 | quit | endif
+function! k#UnregConsole()
+  if winbufnr(3) != -1 && exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
+    execute b:consoleWin."bd"
+  endif
+endfunction
 
-autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>r :call k#RunMe('coffee -s', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -sbp', 'vert bel', "- K.VIM -", "javascript")<CR>
-autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "- K.VIM -", "")<CR>
-autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "- K.VIM -", "html")<CR>
-autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "- K.VIM -", "")<CR>
-nnoremap <silent> <space><leader> :call k#CloseConsole("- K.VIM -")<CR>
-com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "- K.VIM -", "", <q-args>)
+autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordWin') == 1 | quit | endif
+autocmd BufDelete * call k#UnregConsole()
+
+autocmd FileType bat        nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
+autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "")<CR>
+autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "")<CR>
+autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "")<CR>
+autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "")<CR>
+autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "")<CR>
+autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "")<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>r :call k#RunMe('coffee -s', 'botri 10', "")<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -sbp', 'vert bel', "javascript")<CR>
+autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "")<CR>
+autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "html")<CR>
+autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "")<CR>
+nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
+com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
 
 if !exists('g:kdbDir')
@@ -133,13 +145,13 @@ function! k#AutoLoadDict()
       let fn = substitute(fn,"\\","\/","g")
       let l:type = substitute(fn,".*/\\(.*\\)/.*","\\1","")
       if has_key(g:globalDBkeys,l:type)
-        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('topleft 20', '- K.VIM -', '', '!kv query ".fn." '.expand('<cword>'))<CR>"
+        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('', '', '!kv query ".fn." '.expand('<cword>'))<CR>"
       else
         let l:localKeys = ['K', '<C-k>']
         if has_key(g:localDBkeys,l:type)
           let l:localKeys = g:localDBkeys[l:type]
         endif
-        let l:actionToCall = ":call k#ReadExCmdIntoConsole('topleft 30', '- K.VIM -', '".l:type."', '!kv query ".fn." '.expand('<cword>'))"
+        let l:actionToCall = ":call k#ReadExCmdIntoConsole('', '".l:type."', '!kv query ".fn." '.expand('<cword>'))"
         exec "autocmd FileType ".l:type." nnoremap <buffer> <silent> ".l:localKeys[0]." :".l:actionToCall."<CR>"
         exec "autocmd FileType ".l:type." inoremap <buffer> <silent> ".l:localKeys[1]." <Esc>:".l:actionToCall."<CR>a"
         let l:cmd = substitute(l:type,".","\\U&","")
