@@ -76,7 +76,10 @@ endfunction
 function! k#RunReg(reg, interpreter, winOp, ft)
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
-  exec "normal gg\"_dG\"".a:reg."P"
+  exec "normal G\"".a:reg."pk\"_dgg"
+  if a:interpreter == 'php'
+    call append(0, "<?php")
+  endif
   silent exec '%!'.a:interpreter
   execute "normal \<c-w>p"
 endfunction
@@ -96,7 +99,13 @@ function! k#Run(winOp, ft)
     echomsg "Canceled as no interpreter was specified."
   endif
 endfunction
-nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
+
+function! k#RunLine(interpreter, winOp, ft)
+  normal "kyy
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft)
+endfunction
+
+"nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
 vnoremap <silent> <leader>r "ky:call k#Run('botri 30', '')<cr>
 
 function! k#CloseConsole()
@@ -115,9 +124,13 @@ autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordW
 autocmd BufDelete * call k#UnregConsole()
 
 autocmd FileType bat        nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
+autocmd FileType bat        nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "")<CR>
 autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "")<CR>
+autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "")<CR>
 autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "")<CR>
+autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "")<CR>
 autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "")<CR>
+autocmd FileType python     nnoremap <buffer> <Enter>   :call k#RunLine('python', 'botri 10', "")<CR>
 autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "")<CR>
 autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "")<CR>
 autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "")<CR>
