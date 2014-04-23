@@ -73,12 +73,12 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! k#RunReg(reg, interpreter, winOp, ft)
+function! k#RunReg(reg, interpreter, winOp, ft, preline)
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
   exec "normal G\"".a:reg."pk\"_dgg"
-  if a:interpreter == 'php'
-    call append(0, "<?php")
+  if a:preline != ''
+    call append(0, a:preline)
   endif
   silent exec '%!'.a:interpreter
   execute "normal \<c-w>p"
@@ -86,7 +86,7 @@ endfunction
 
 function! k#RunMe(interpreter, winOp, ft)
   silent 1,$y k
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft)
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft, '')
 endfunction
 
 function! k#Run(winOp, ft)
@@ -94,15 +94,15 @@ function! k#Run(winOp, ft)
   let l:interpreter = input("Run with:")
   call inputrestore()
   if l:interpreter != ""
-    call k#RunReg('k', l:interpreter, a:winOp, a:ft)
+    call k#RunReg('k', l:interpreter, a:winOp, a:ft, '')
   else
     echomsg "Canceled as no interpreter was specified."
   endif
 endfunction
 
-function! k#RunLine(interpreter, winOp, ft)
+function! k#RunLine(interpreter, winOp, ft, preline)
   normal "kyy
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft)
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
 endfunction
 
 "nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
@@ -124,13 +124,13 @@ autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordW
 autocmd BufDelete * call k#UnregConsole()
 
 autocmd FileType bat        nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
-autocmd FileType bat        nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "")<CR>
+autocmd FileType bat        nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "", "")<CR>
 autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "")<CR>
-autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "")<CR>
+autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "", "")<CR>
 autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "")<CR>
-autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "")<CR>
+autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "", "<?php")<CR>
 autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "")<CR>
-autocmd FileType python     nnoremap <buffer> <Enter>   :call k#RunLine('python', 'botri 10', "")<CR>
+autocmd FileType python     nnoremap <buffer> <Enter>   :call k#RunLine('python', 'botri 10', "", "")<CR>
 autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "")<CR>
 autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "")<CR>
 autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "")<CR>
