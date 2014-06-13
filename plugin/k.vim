@@ -169,13 +169,13 @@ function! k#AutoLoadDict()
       let fn = substitute(fn,"\\","\/","g")
       let l:type = substitute(fn,".*/\\(.*\\)/.*","\\1","")
       if has_key(g:globalDBkeys,l:type)
-        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('', '', '!kv query ".fn." '.expand('<cword>'))<CR>"
+        exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('', '', '!kv query \"".fn."\" '.expand('<cword>'))<CR>"
       else
         let l:localKeys = ['K', '<C-k>']
         if has_key(g:localDBkeys,l:type)
           let l:localKeys = g:localDBkeys[l:type]
         endif
-        let l:actionToCall = ":call k#ReadExCmdIntoConsole('', '".l:type."', '!kv query ".fn." '.expand('<cword>'))"
+        let l:actionToCall = ":call k#ReadExCmdIntoConsole('', '".l:type."', '!kv query \"".fn."\" '.expand('<cword>'))"
         exec "autocmd FileType ".l:type." nnoremap <buffer> <silent> ".l:localKeys[0]." :".l:actionToCall."<CR>"
         exec "autocmd FileType ".l:type." inoremap <buffer> <silent> ".l:localKeys[1]." <Esc>:".l:actionToCall."<CR>a"
         let l:cmd = substitute(l:type,".","\\U&","")
