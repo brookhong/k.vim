@@ -36,6 +36,8 @@ function! s:FocusMyConsole(winOp)
       setlocal nobuflisted
       setlocal noswapfile
       setlocal noreadonly
+      setlocal ff=unix
+      setlocal nolist
       let b:lordWin = l:mw
       let l:cw = bufnr('%')
       call setbufvar(l:mw, "consoleWin", l:cw)
@@ -73,7 +75,7 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! k#RunReg(reg, interpreter, winOp, ft, preline)
+function! s:RunReg(reg, interpreter, winOp, ft, preline)
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
   exec "normal G\"".a:reg."pk\"_dgg"
@@ -86,7 +88,7 @@ endfunction
 
 function! k#RunMe(interpreter, winOp, ft)
   silent 1,$y k
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft, '')
+  call <SID>RunReg('k', a:interpreter, a:winOp, a:ft, '')
 endfunction
 
 function! k#Run(winOp, ft)
@@ -94,7 +96,7 @@ function! k#Run(winOp, ft)
   let l:interpreter = input("Run with:")
   call inputrestore()
   if l:interpreter != ""
-    call k#RunReg('k', l:interpreter, a:winOp, a:ft, '')
+    call <SID>RunReg('k', l:interpreter, a:winOp, a:ft, '')
   else
     echomsg "Canceled as no interpreter was specified."
   endif
@@ -102,7 +104,7 @@ endfunction
 
 function! k#RunLine(interpreter, winOp, ft, preline)
   normal "kyy
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
+  call <SID>RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
 endfunction
 
 "nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
@@ -123,10 +125,11 @@ endfunction
 autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordWin') == 1 | quit | endif
 autocmd BufDelete * call k#UnregConsole()
 
-autocmd FileType bat        nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
-autocmd FileType bat        nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "", "")<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "", "")<CR>
 autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "")<CR>
 autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "", "")<CR>
+autocmd FileType sh         nnoremap <buffer> <C-Enter> :call k#RunLine('bash', 'vert bel', "", "")<CR>
 autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "")<CR>
 autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "", "<?php")<CR>
 autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "")<CR>
@@ -142,6 +145,14 @@ autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %
 nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
+function! Rl(ln)
+    let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
+    if len(l:kargs) > 2
+        let @k = l:kargs[2]
+        call <SID>RunReg('k', l:kargs[1], 'botri 20', '', '')
+    endif
+endfunction
+com! -nargs=1 -bar Rl call Rl(<q-args>)
 
 if !exists('g:kdbDir')
   let g:kdbDir = expand("<sfile>:p:h")
