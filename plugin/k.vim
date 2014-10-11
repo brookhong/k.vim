@@ -24,6 +24,10 @@
 " TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 " SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+let g:path_separator = '/'
+if has("win32")
+  let g:path_separator = '\\'
+endif
 function! s:FocusMyConsole(winOp)
   if !exists('b:lordWin')
     let l:mw = bufnr('%')
@@ -142,6 +146,11 @@ autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -s
 autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "")<CR>
 autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "html")<CR>
 autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "")<CR>
+autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
+autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
+autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
 nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
@@ -171,7 +180,7 @@ function! k#AutoLoadDict()
       if has_key(g:globalDBkeys,l:type)
         exec "nnoremap <silent> ".g:globalDBkeys[l:type]." :call k#ReadExCmdIntoConsole('', '', '!kv query \"".fn."\" '.expand('<cword>'))<CR>"
       else
-        let l:localKeys = ['K', '<C-k>']
+        let l:localKeys = ['K', '<C-i>']
         if has_key(g:localDBkeys,l:type)
           let l:localKeys = g:localDBkeys[l:type]
         endif
