@@ -79,10 +79,11 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! s:RunReg(reg, interpreter, winOp, ft, preline)
+function! k#RunReg(reg, interpreter, winOp, ft, preline)
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
-  exec "normal G\"".a:reg."pk\"_dgg"
+  exec "normal ggdG"
+  exec "normal \"".a:reg."p"
   if a:preline != ''
     call append(0, a:preline)
   endif
@@ -92,7 +93,7 @@ endfunction
 
 function! k#RunMe(interpreter, winOp, ft)
   silent 1,$y k
-  call <SID>RunReg('k', a:interpreter, a:winOp, a:ft, '')
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft, '')
 endfunction
 
 function! k#Run(winOp, ft)
@@ -100,7 +101,7 @@ function! k#Run(winOp, ft)
   let l:interpreter = input("Run with:")
   call inputrestore()
   if l:interpreter != ""
-    call <SID>RunReg('k', l:interpreter, a:winOp, a:ft, '')
+    call k#RunReg('k', l:interpreter, a:winOp, a:ft, '')
   else
     echomsg "Canceled as no interpreter was specified."
   endif
@@ -108,7 +109,7 @@ endfunction
 
 function! k#RunLine(interpreter, winOp, ft, preline)
   normal "kyy
-  call <SID>RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
 endfunction
 
 "nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
@@ -154,11 +155,23 @@ autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand
 nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
+com! -nargs=1 -complete=customlist,s:GetFileTypes Ft let &ft=<f-args>
+command! CtrlPK call ctrlp#init(ctrlp#k#id())
+function! s:GetFileTypes(A,L,P)
+  let l:sf = split(glob($VIMRUNTIME . '/syntax/' . a:A . '*.vim'),"\n")
+  let l:types = []
+  for f in l:sf
+    let l:fn = substitute(f,'.*[/\\]\([^.]*\).vim','\1','g')
+    call add(l:types, l:fn)
+  endfor
+  return l:types
+endfunction
+
 function! Rl(ln)
     let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
     if len(l:kargs) > 2
         let @k = l:kargs[2]
-        call <SID>RunReg('k', l:kargs[1], 'botri 20', '', '')
+        call k#RunReg('k', l:kargs[1], 'botri 20', '', '')
     endif
 endfunction
 com! -nargs=1 -bar Rl call Rl(<q-args>)
