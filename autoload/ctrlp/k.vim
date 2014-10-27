@@ -24,7 +24,7 @@ endif
 let g:loaded_ctrlp_k = 1
 
 if !exists('g:ctrlp_k_favorites')
-    let g:ctrlp_k_favorites = '~/.ctrlpk'
+    let g:ctrlp_k_favorites = substitute($HOME,'\\','/','g')."/.ctrlpk"
 endif
 
 
@@ -75,8 +75,9 @@ call add(g:ctrlp_ext_vars, {
 "
 " Return: a Vim's List
 "
+let s:editor = '## EDIT K Launcher ##'
 function! ctrlp#k#init()
-    let input = ['## EDIT K ##']
+    let input = [s:editor]
     if filereadable(g:ctrlp_k_favorites)
         let input = input + readfile(g:ctrlp_k_favorites)
     endif
@@ -94,15 +95,21 @@ endfunction
 function! ctrlp#k#accept(mode, str)
     " For this example, just exit ctrlp and run help
     call ctrlp#exit()
-    if a:str == '## EDIT K ##'
+    if a:str == s:editor
         exec ':sn '.g:ctrlp_k_favorites
     else
-        let @k = a:str
         let l:cmd = 'bash'
         if has("win32")
             let l:cmd = 'cmd'
         endif
-        call k#RunReg('k', l:cmd, 'botri 20', '', '')
+        if a:str[0] == '!'
+            let @k = a:str[1:]
+            call k#RunReg('k', l:cmd, 'botri 20', '', '')
+        else
+            let @k = a:str
+            call k#RunReg('k', l:cmd, 'botri 20', '', '')
+            call k#CloseConsole()
+        endif
     endif
 endfunction
 
