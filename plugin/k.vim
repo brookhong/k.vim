@@ -42,6 +42,7 @@ function! s:FocusMyConsole(winOp)
       setlocal noreadonly
       setlocal ff=unix
       setlocal nolist
+      map <buffer> q :q<CR>
       let b:lordWin = l:mw
       let l:cw = bufnr('%')
       call setbufvar(l:mw, "consoleWin", l:cw)
@@ -79,7 +80,7 @@ function! k#ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! k#RunReg(reg, interpreter, winOp, ft, preline)
+function! k#RunReg(reg, interpreter, winOp, ft, preline, astring)
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
   exec "normal ggdG"
@@ -87,33 +88,51 @@ function! k#RunReg(reg, interpreter, winOp, ft, preline)
   if a:preline != ''
     call append(0, a:preline)
   endif
-  silent exec '%!'.a:interpreter
+  if a:astring
+    let l:str = substitute(getreg(a:reg), '"' , '\\"', "g")
+    let l:str = substitute(l:str, '\s*\n\s*$', '', 'g')
+    silent exec '%!'.a:interpreter.' "'.l:str.'"'
+  else
+    silent exec '%!'.a:interpreter
+  endif
   execute "normal \<c-w>p"
 endfunction
 
-function! k#RunMe(interpreter, winOp, ft)
+function! k#RunMe(interpreter, winOp, ft, astring)
   silent 1,$y k
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft, '')
+  call k#RunReg('k', a:interpreter, a:winOp, a:ft, '', a:astring)
 endfunction
 
-function! k#Run(winOp, ft)
+function! k#RunInteractive(winOp, ft, astring)
   call inputsave()
   let l:interpreter = input("Run with:")
   call inputrestore()
   if l:interpreter != ""
-    call k#RunReg('k', l:interpreter, a:winOp, a:ft, '')
+    call k#RunReg('k', l:interpreter, a:winOp, a:ft, '', a:astring)
   else
     echomsg "Canceled as no interpreter was specified."
   endif
 endfunction
 
-function! k#RunLine(interpreter, winOp, ft, preline)
-  normal "kyy
-  call k#RunReg('k', a:interpreter, a:winOp, a:ft, a:preline)
+function! s:BufInit()
+    let l:kargs = matchlist(getline(1), '.*\s\+k.vim\s\+\(.\+\)\s\+k.vim.*')
+    if len(l:kargs) > 1
+        exec l:kargs[1]
+    endif
 endfunction
 
-"nnoremap <silent> <leader>x "kyy:call k#Run('botri 30', '')<cr>
-vnoremap <silent> <leader>r "ky:call k#Run('botri 30', '')<cr>
+function! k#RunLine(interpreter, winOp, ft, preline, astring)
+  call s:BufInit()
+  let l:interpreter = exists('b:interpreter') ? b:interpreter : a:interpreter
+  let l:winOp = exists('b:winOp') ? b:winOp : a:winOp
+  let l:ft = exists('b:ft') ? b:ft : a:ft
+  let l:preline = exists('b:preline') ? b:preline : a:preline
+  let l:astring = exists('b:astring') ? b:astring : a:astring
+  normal "kyy
+  call k#RunReg('k', l:interpreter, l:winOp, l:ft, l:preline, l:astring)
+endfunction
+
+vnoremap <silent> <leader>r "ky:call k#RunInteractive('botri 30', '', 0)<cr>
 
 function! k#CloseConsole()
   if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
@@ -130,28 +149,29 @@ endfunction
 autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordWin') == 1 | quit | endif
 autocmd BufDelete * call k#UnregConsole()
 
-autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "")<CR>
-autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "", "")<CR>
-autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "")<CR>
-autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "", "")<CR>
-autocmd FileType sh         nnoremap <buffer> <C-Enter> :call k#RunLine('bash', 'vert bel', "", "")<CR>
-autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "")<CR>
-autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "", "<?php")<CR>
-autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "")<CR>
-autocmd FileType python     nnoremap <buffer> <Enter>   :call k#RunLine('python', 'botri 10', "", "")<CR>
-autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "")<CR>
-autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "")<CR>
-autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "")<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>r :call k#RunMe('coffee -s', 'botri 10', "")<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -sbp', 'vert bel', "javascript")<CR>
-autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "")<CR>
-autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "html")<CR>
-autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "")<CR>
-autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
-autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
-autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
-autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
-autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call k#RunMe(cmd, 'botri 10', "")<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call k#RunMe('cmd', 'botri 10', "", 0)<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call k#RunLine('cmd', 'botri 10', "", "", 0)<CR>
+autocmd FileType sh         nnoremap <buffer> <leader>r :call k#RunMe('bash', 'botri 10', "", 0)<CR>
+autocmd FileType sh         nnoremap <buffer> <Enter>   :call k#RunLine('bash', 'botri 10', "", "", 0)<CR>
+autocmd FileType sh         nnoremap <buffer> <C-Enter> :call k#RunLine('bash', 'vert bel', "", "", 0)<CR>
+autocmd FileType php        nnoremap <buffer> <leader>r :call k#RunMe('php', 'botri 10', "", 0)<CR>
+autocmd FileType php        nnoremap <buffer> <Enter>   :call k#RunLine('php', 'botri 10', "", "<?php", 0)<CR>
+autocmd FileType python     nnoremap <buffer> <leader>r :call k#RunMe('python', 'botri 10', "", 0)<CR>
+autocmd FileType python     nnoremap <buffer> <Enter>   :call k#RunLine('python', 'botri 10', "", "", 0)<CR>
+autocmd FileType mysql      nnoremap <buffer> <Enter>   :call k#RunLine('mysql -uroot -e', 'botri 10', "", "", 1)<CR>
+autocmd FileType ruby       nnoremap <buffer> <leader>r :call k#RunMe('ruby', 'botri 10', "", 0)<CR>
+autocmd FileType perl       nnoremap <buffer> <leader>r :call k#RunMe('perl', 'botri 10', "", 0)<CR>
+autocmd FileType javascript nnoremap <buffer> <leader>r :call k#RunMe('node', 'botri 10', "", 0)<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>r :call k#RunMe('coffee -s', 'botri 10', "", 0)<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>p :call k#RunMe('coffee -sbp', 'vert bel', "javascript", 0)<CR>
+autocmd FileType java       nnoremap <buffer> <leader>r :call k#RunMe('groovy -e', 'botri 10', "", 0)<CR>
+autocmd FileType jade       nnoremap <buffer> <leader>r :call k#RunMe('jade -P', 'vert bel', "html", 0)<CR>
+autocmd FileType make       nnoremap <buffer> <leader>r :call k#RunMe('make -f %', 'botri 10', "", 0)<CR>
+autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "", 0)<CR>
+autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "", 0)<CR>
+autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call k#RunMe(cmd, 'botri 10', "", 0)<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call k#RunMe(cmd, 'botri 10', "", 0)<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call k#RunMe(cmd, 'botri 10', "", 0)<CR>
 nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
@@ -171,7 +191,7 @@ function! Rl(ln)
     let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
     if len(l:kargs) > 2
         let @k = l:kargs[2]
-        call k#RunReg('k', l:kargs[1], 'botri 20', '', '')
+        call k#RunReg('k', l:kargs[1], 'botri 20', '', '', 0)
     endif
 endfunction
 com! -nargs=1 -bar Rl call Rl(<q-args>)

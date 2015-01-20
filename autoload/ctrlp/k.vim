@@ -76,10 +76,23 @@ call add(g:ctrlp_ext_vars, {
 " Return: a Vim's List
 "
 let s:editor = '## EDIT K Launcher ##'
+let s:commenters = {
+    \ 'cmd': 'REM ',
+    \ 'bat': 'REM ',
+    \ 'sh': '# '
+    \ }
 function! ctrlp#k#init()
-    let input = [s:editor]
+    let input = []
     if filereadable(g:ctrlp_k_favorites)
-        let input = input + readfile(g:ctrlp_k_favorites)
+        let ext = substitute(g:ctrlp_k_favorites, '.\+\.', '','')
+        let cmt = s:commenters[ext]
+        let cmn = len(cmt)-1
+        for line in readfile(g:ctrlp_k_favorites)
+            if line[:cmn] != cmt && line != ""
+                call add(input, line)
+            endif
+        endfor
+        let input = [s:editor] + input
     endif
     return input
 endfunction
@@ -104,10 +117,10 @@ function! ctrlp#k#accept(mode, str)
         endif
         if a:str[0] == '!'
             let @k = a:str[1:]
-            call k#RunReg('k', l:cmd, 'botri 20', '', '')
+            call k#RunReg('k', l:cmd, 'botri 20', '', '', 0)
         else
             let @k = a:str
-            call k#RunReg('k', l:cmd, 'botri 20', '', '')
+            call k#RunReg('k', l:cmd, 'botri 20', '', '', 0)
             call k#CloseConsole()
         endif
     endif
