@@ -175,17 +175,31 @@ autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand
 nnoremap <silent> <space><leader> :call k#CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call k#ReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call k#ReadExCmd(<q-args>)
-com! -nargs=1 -complete=customlist,s:GetFileTypes Ft let &ft=<f-args>
+com! -nargs=1 -complete=customlist,GetFileTypes Ft let &ft=<f-args>
 command! CtrlPK call ctrlp#init(ctrlp#k#id())
-function! s:GetFileTypes(A,L,P)
-  let l:sf = split(glob($VIMRUNTIME . '/syntax/' . a:A . '*.vim'),"\n")
-  let l:types = []
-  for f in l:sf
-    let l:fn = substitute(f,'.*[/\\]\([^.]*\).vim','\1','g')
-    call add(l:types, l:fn)
-  endfor
-  return l:types
+
+" echo Plugins(&rtp, 'colors/ir', 'vim')
+function! Plugins(path, prefix, ext)
+    let cf = globpath(a:path, a:prefix."*.".a:ext)
+    let cl = split(cf, '\n')
+    let cl = map(cl, 'substitute(v:val, ".*[/\\\\]\\(.*\\).'.a:ext.'", "\\1", "g")')
+    let cl = uniq(sort(cl))
+    return cl
 endfunction
+
+function! GetFileTypes(A,L,P)
+  return Plugins(&rtp, 'syntax/'.a:A, 'vim')
+endfunction
+
+function! k#TestScript()
+    let nr = input('TestScript > ', '', 'customlist,GetFileTypes')
+    if nr != ""
+      new
+      set bt=nofile
+      let &ft=nr
+    endif
+endfunction
+nnoremap <silent> <leader>t :call k#TestScript()<CR>
 
 function! Rl(ln)
     let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
