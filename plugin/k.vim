@@ -176,6 +176,7 @@ nnoremap <silent> <space><leader> :call <SID>CloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call <SID>ReadExCmd(<q-args>)
 com! -nargs=1 -complete=customlist,GetFileTypes Ft let &ft=<f-args>
+com! -nargs=1 -complete=shellcmd Man call KReadExCmdIntoConsole("botri", "", "!man ".<q-args>)
 command! CtrlPK call ctrlp#init(ctrlp#k#id())
 
 " echo Plugins(&rtp, 'colors/ir', 'vim')
