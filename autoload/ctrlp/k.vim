@@ -117,11 +117,11 @@ function! ctrlp#k#accept(mode, str)
         endif
         if a:str[0] == '!'
             let @k = a:str[1:]
-            call k#RunReg('k', l:cmd, 'botri 20', '', '', 0)
+            call KRunReg('k', l:cmd, 'botri 20', '', '', 0)
         else
             let @k = a:str
-            call k#RunReg('k', l:cmd, 'botri 20', '', '', 0)
-            call k#CloseConsole()
+            call KRunReg('k', l:cmd, 'botri 20', '', '', 0)
+            call KCloseConsole()
         endif
     endif
 endfunction

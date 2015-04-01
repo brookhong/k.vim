@@ -134,7 +134,7 @@ endfunction
 
 vnoremap <silent> <leader>r "ky:call <SID>RunInteractive('botri 30', '', 0)<cr>
 
-function! s:CloseConsole()
+function! KCloseConsole()
   if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
     execute b:consoleWin."bd"
   endif
@@ -172,7 +172,7 @@ autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.e
 autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
 autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
 autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
-nnoremap <silent> <space><leader> :call <SID>CloseConsole()<CR>
+nnoremap <silent> <space><leader> :call KCloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call <SID>ReadExCmd(<q-args>)
 com! -nargs=1 -complete=customlist,GetFileTypes Ft let &ft=<f-args>
