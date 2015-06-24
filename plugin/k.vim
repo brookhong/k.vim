@@ -129,7 +129,11 @@ function! s:RunLine(interpreter, winOp, ft, preline, astring)
   let l:preline = exists('b:preline') ? b:preline : a:preline
   let l:astring = exists('b:astring') ? b:astring : a:astring
   normal "kyy
-  call KRunReg('k', l:interpreter, l:winOp, l:ft, l:preline, l:astring)
+  if @k[0] == '!'
+    exec @k
+  else
+    call KRunReg('k', l:interpreter, l:winOp, l:ft, l:preline, l:astring)
+  endif
 endfunction
 
 vnoremap <silent> <leader>r "ky:call <SID>RunInteractive('botri 30', '', 0)<cr>
@@ -153,7 +157,9 @@ autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call KRunMe('cmd', 'bot
 autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call <SID>RunLine('cmd', 'botri 10', "", "", 0)<CR>
 autocmd FileType sh         nnoremap <buffer> <leader>r :call KRunMe('bash', 'botri 10', "", 0)<CR>
 autocmd FileType sh         nnoremap <buffer> <Enter>   :call <SID>RunLine('bash', 'botri 10', "", "", 0)<CR>
+autocmd FileType sh         nnoremap <buffer> <kEnter>  :call <SID>RunLine('bash', 'botri 10', "", "", 0)<CR>
 autocmd FileType sh         nnoremap <buffer> <C-Enter> :call <SID>RunLine('bash', 'vert bel', "", "", 0)<CR>
+autocmd FileType zsh        nnoremap <buffer> <leader>r :call KRunMe('zsh', 'botri 10', "", 0)<CR>
 autocmd FileType php        nnoremap <buffer> <leader>r :call KRunMe('php', 'botri 10', "", 0)<CR>
 autocmd FileType php        nnoremap <buffer> <Enter>   :call <SID>RunLine('php', 'botri 10', "", "<?php", 0)<CR>
 autocmd FileType python     nnoremap <buffer> <leader>r :call KRunMe('python', 'botri 10', "", 0)<CR>

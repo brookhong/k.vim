@@ -109,19 +109,21 @@ function! ctrlp#k#accept(mode, str)
     " For this example, just exit ctrlp and run help
     call ctrlp#exit()
     if a:str == s:editor
-        exec ':sn '.g:ctrlp_k_favorites
+        if &modified
+            exec ':sn '.g:ctrlp_k_favorites
+        else
+            exec ':e '.g:ctrlp_k_favorites
+        endif
     else
         let l:cmd = 'bash'
         if has("win32")
             let l:cmd = 'cmd'
         endif
         if a:str[0] == '!'
-            let @k = a:str[1:]
-            call KRunReg('k', l:cmd, 'botri 20', '', '', 0)
+            exec a:str
         else
             let @k = a:str
             call KRunReg('k', l:cmd, 'botri 20', '', '', 0)
-            call KCloseConsole()
         endif
     endif
 endfunction
