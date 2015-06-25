@@ -80,15 +80,31 @@ function! s:ReadExCmd(exCmd)
   call append(0, l:result)
 endfunction
 
-function! KRunReg(reg, interpreter, winOp, ft, preline, astring)
-  call <SID>FocusMyConsole(a:winOp)
-  exec "set ft=".a:ft
+let g:cf_options = {'window_open': 'botri 10', 'console_filetype': '', 'input_as_text': 0, 'line_prefix': ''}
+function! s:prepareOptions(default_options, override_options)
+  let l:cf_options = deepcopy(a:default_options)
+  for key in keys(a:override_options)
+    let l:cf_options[key] = a:override_options[key]
+  endfor
+  return l:cf_options
+endfunction
+
+function! KRunReg(reg, interpreter, cf_options)
+  let l:cf_options = g:cf_options
+  if exists('b:cf_options')
+    let l:cf_options = <SID>prepareOptions(l:cf_options, b:cf_options)
+  endif
+  if len(keys(a:cf_options))
+    let l:cf_options = <SID>prepareOptions(l:cf_options, a:cf_options)
+  endif
+  call <SID>FocusMyConsole(l:cf_options['window_open'])
+  exec "set ft=".l:cf_options['console_filetype']
   exec "normal ggdG"
   exec "normal \"".a:reg."p"
-  if a:preline != ''
-    call append(0, a:preline)
+  if l:cf_options['line_prefix'] != ''
+    call append(0, l:cf_options['line_prefix'])
   endif
-  if a:astring
+  if l:cf_options['input_as_text']
     let l:str = substitute(getreg(a:reg), '"' , '\\"', "g")
     let l:str = substitute(l:str, '\s*\n\s*$', '', 'g')
     silent exec '%!'.a:interpreter.' "'.l:str.'"'
@@ -98,17 +114,19 @@ function! KRunReg(reg, interpreter, winOp, ft, preline, astring)
   execute "normal \<c-w>p"
 endfunction
 
-function! KRunMe(interpreter, winOp, ft, astring)
+function! KRunMe(interpreter, ...)
   silent 1,$y k
-  call KRunReg('k', a:interpreter, a:winOp, a:ft, '', a:astring)
+  let l:cf_options = a:0 ? a:1 : {}
+  call KRunReg('k', a:interpreter, l:cf_options)
 endfunction
 
-function! s:RunInteractive(winOp, ft, astring)
+function! s:RunInteractive(...)
   call inputsave()
   let l:interpreter = input("Run with:")
   call inputrestore()
   if l:interpreter != ""
-    call KRunReg('k', l:interpreter, a:winOp, a:ft, '', a:astring)
+    let l:cf_options = a:0 ? a:1 : {}
+    call KRunReg('k', l:interpreter, l:cf_options)
   else
     echomsg "Canceled as no interpreter was specified."
   endif
@@ -121,22 +139,19 @@ function! s:BufInit()
     endif
 endfunction
 
-function! s:RunLine(interpreter, winOp, ft, preline, astring)
+function! s:RunLine(interpreter, ...)
   call <SID>BufInit()
   let l:interpreter = exists('b:interpreter') ? b:interpreter : a:interpreter
-  let l:winOp = exists('b:winOp') ? b:winOp : a:winOp
-  let l:ft = exists('b:ft') ? b:ft : a:ft
-  let l:preline = exists('b:preline') ? b:preline : a:preline
-  let l:astring = exists('b:astring') ? b:astring : a:astring
   normal "kyy
   if @k[0] == '!'
     exec @k
   else
-    call KRunReg('k', l:interpreter, l:winOp, l:ft, l:preline, l:astring)
+    let l:cf_options = a:0 ? a:1 : {}
+    call KRunReg('k', l:interpreter, l:cf_options)
   endif
 endfunction
 
-vnoremap <silent> <leader>r "ky:call <SID>RunInteractive('botri 30', '', 0)<cr>
+vnoremap <silent> <leader>r "ky:call <SID>RunInteractive({'window_open': 'botri 30'})<cr>
 
 function! KCloseConsole()
   if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
@@ -153,31 +168,31 @@ endfunction
 autocmd BufEnter * if &buftype=="nofile" && winbufnr(2) == -1 && exists('b:lordWin') == 1 | quit | endif
 autocmd BufDelete * call <SID>UnregConsole()
 
-autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call KRunMe('cmd', 'botri 10', "", 0)<CR>
-autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call <SID>RunLine('cmd', 'botri 10', "", "", 0)<CR>
-autocmd FileType sh         nnoremap <buffer> <leader>r :call KRunMe('bash', 'botri 10', "", 0)<CR>
-autocmd FileType sh         nnoremap <buffer> <Enter>   :call <SID>RunLine('bash', 'botri 10', "", "", 0)<CR>
-autocmd FileType sh         nnoremap <buffer> <kEnter>  :call <SID>RunLine('bash', 'botri 10', "", "", 0)<CR>
-autocmd FileType sh         nnoremap <buffer> <C-Enter> :call <SID>RunLine('bash', 'vert bel', "", "", 0)<CR>
-autocmd FileType zsh        nnoremap <buffer> <leader>r :call KRunMe('zsh', 'botri 10', "", 0)<CR>
-autocmd FileType php        nnoremap <buffer> <leader>r :call KRunMe('php', 'botri 10', "", 0)<CR>
-autocmd FileType php        nnoremap <buffer> <Enter>   :call <SID>RunLine('php', 'botri 10', "", "<?php", 0)<CR>
-autocmd FileType python     nnoremap <buffer> <leader>r :call KRunMe('python', 'botri 10', "", 0)<CR>
-autocmd FileType python     nnoremap <buffer> <Enter>   :call <SID>RunLine('python', 'botri 10', "", "", 0)<CR>
-autocmd FileType mysql      nnoremap <buffer> <Enter>   :call <SID>RunLine('mysql -uroot -e', 'botri 10', "", "", 1)<CR>
-autocmd FileType ruby       nnoremap <buffer> <leader>r :call KRunMe('ruby', 'botri 10', "", 0)<CR>
-autocmd FileType perl       nnoremap <buffer> <leader>r :call KRunMe('perl', 'botri 10', "", 0)<CR>
-autocmd FileType javascript nnoremap <buffer> <leader>r :call KRunMe('node', 'botri 10', "", 0)<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>r :call KRunMe('coffee -s', 'botri 10', "", 0)<CR>
-autocmd FileType coffee     nnoremap <buffer> <leader>p :call KRunMe('coffee -sbp', 'vert bel', "javascript", 0)<CR>
-autocmd FileType java       nnoremap <buffer> <leader>r :call KRunMe('groovy -e', 'botri 10', "", 0)<CR>
-autocmd FileType jade       nnoremap <buffer> <leader>r :call KRunMe('jade -P', 'vert bel', "html", 0)<CR>
-autocmd FileType make       nnoremap <buffer> <leader>r :call KRunMe('make -f %', 'botri 10', "", 0)<CR>
-autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
-autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
-autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
-autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
-autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call KRunMe(cmd, 'botri 10', "", 0)<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <leader>r :call KRunMe('cmd')<CR>
+autocmd FileType DOSBATCH   nnoremap <buffer> <Enter>   :call <SID>RunLine('cmd')<CR>
+autocmd FileType sh         nnoremap <buffer> <leader>r :call KRunMe('bash')<CR>
+autocmd FileType sh         nnoremap <buffer> <Enter>   :call <SID>RunLine('bash')<CR>
+autocmd FileType sh         nnoremap <buffer> <kEnter>  :call <SID>RunLine('bash')<CR>
+autocmd FileType sh         nnoremap <buffer> <C-Enter> :call <SID>RunLine('bash', {'window_open': 'vert bel'})<CR>
+autocmd FileType zsh        nnoremap <buffer> <leader>r :call KRunMe('zsh')<CR>
+autocmd FileType php        nnoremap <buffer> <leader>r :call KRunMe('php')<CR>
+autocmd FileType php        nnoremap <buffer> <Enter>   :call <SID>RunLine('php', {'line_prefix': '<?php'})<CR>
+autocmd FileType python     nnoremap <buffer> <leader>r :call KRunMe('python')<CR>
+autocmd FileType python     nnoremap <buffer> <Enter>   :call <SID>RunLine('python')<CR>
+autocmd FileType mysql      nnoremap <buffer> <Enter>   :call <SID>RunLine('mysql -uroot -e', {'input_as_text': 1})<CR>
+autocmd FileType ruby       nnoremap <buffer> <leader>r :call KRunMe('ruby')<CR>
+autocmd FileType perl       nnoremap <buffer> <leader>r :call KRunMe('perl')<CR>
+autocmd FileType javascript nnoremap <buffer> <leader>r :call KRunMe('node')<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>r :call KRunMe('coffee -s')<CR>
+autocmd FileType coffee     nnoremap <buffer> <leader>p :call KRunMe('coffee -sbp', {'window_open': 'vert bel', 'console_filetype': 'javascript'})<CR>
+autocmd FileType java       nnoremap <buffer> <leader>r :call KRunMe('groovy -e')<CR>
+autocmd FileType jade       nnoremap <buffer> <leader>r :call KRunMe('jade -P', {'window_open': 'vert bel', 'console_filetype': 'html'})<CR>
+autocmd FileType make       nnoremap <buffer> <leader>r :call KRunMe('make -f %')<CR>
+autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd)<CR>
+autocmd FileType c          nnoremap <buffer> <leader>rc :w<Bar>let cmd='gcc '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd)<CR>
+autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').g:path_separator.expand('%:r').'.exe'<Bar>call KRunMe(cmd)<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call KRunMe(cmd)<CR>
+autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call KRunMe(cmd)<CR>
 nnoremap <silent> <space><leader> :call KCloseConsole()<CR>
 com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call <SID>ReadExCmd(<q-args>)
@@ -212,7 +227,7 @@ function! Rl(ln)
     let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
     if len(l:kargs) > 2
         let @k = l:kargs[2]
-        call KRunReg('k', l:kargs[1], 'botri 20', '', '', 0)
+        call KRunReg('k', l:kargs[1], {'window_open': 'botri 20'})
     endif
 endfunction
 com! -nargs=1 -bar Rl call Rl(<q-args>)

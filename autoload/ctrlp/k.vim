@@ -123,7 +123,7 @@ function! ctrlp#k#accept(mode, str)
             exec a:str
         else
             let @k = a:str
-            call KRunReg('k', l:cmd, 'botri 20', '', '', 0)
+            call KRunReg('k', l:cmd, {'window_open': 'botri 20'})
         endif
     endif
 endfunction
