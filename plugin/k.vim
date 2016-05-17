@@ -205,7 +205,9 @@ function! Plugins(path, prefix, ext)
     let cf = globpath(a:path, a:prefix."*.".a:ext)
     let cl = split(cf, '\n')
     let cl = map(cl, 'substitute(v:val, ".*[/\\\\]\\(.*\\).'.a:ext.'", "\\1", "g")')
-    let cl = uniq(sort(cl))
+    if exists('*uniq')
+      let cl = uniq(sort(cl))
+    endif
     return cl
 endfunction
 
