@@ -122,8 +122,7 @@ function! ctrlp#k#accept(mode, str)
         if a:str[0] == '!'
             exec a:str
         else
-            let @k = a:str
-            call KRunReg('k', l:cmd, {'window_open': 'botri 20'})
+            call KRunTemp(l:cmd, {'window_open': 'botri 20', 'snippet': a:str})
         endif
     endif
 endfunction

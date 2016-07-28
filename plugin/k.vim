@@ -50,7 +50,7 @@ function! s:FocusMyConsole(winOp)
   endif
 endfunction
 
-function! s:RunCmd(exCmd)
+function! KRunCmd(exCmd)
   if a:exCmd[0] == "!"
     let l:shCmd = strpart(a:exCmd,1)
     let l:result = split(system(l:shCmd),"\\n")
@@ -65,7 +65,7 @@ function! s:RunCmd(exCmd)
 endfunction
 
 function! KReadExCmdIntoConsole(winOp,ft,exCmd)
-  let l:result = <SID>RunCmd(a:exCmd)
+  let l:result = KRunCmd(a:exCmd)
   let l:mw = bufnr('%')
   call <SID>FocusMyConsole(a:winOp)
   exec "set ft=".a:ft
@@ -76,7 +76,7 @@ function! KReadExCmdIntoConsole(winOp,ft,exCmd)
 endfunction
 
 function! s:ReadExCmd(exCmd)
-  let l:result = <SID>RunCmd(a:exCmd)
+  let l:result = KRunCmd(a:exCmd)
   call append(0, l:result)
 endfunction
 
@@ -89,7 +89,13 @@ function! s:prepareOptions(default_options, override_options)
   return l:cf_options
 endfunction
 
-function! KRunReg(reg, interpreter, cf_options)
+let s:k_vim_dir = substitute($HOME,'\\','/','g')."/.k.vim"
+
+function! KRunTemp(interpreter, cf_options)
+  if ! isdirectory(s:k_vim_dir)
+    call mkdir(s:k_vim_dir)
+  endif
+  let l:tmpFile = s:k_vim_dir."/k.snippet"
   let l:cf_options = g:cf_options
   if exists('b:cf_options')
     let l:cf_options = <SID>prepareOptions(l:cf_options, b:cf_options)
@@ -97,27 +103,32 @@ function! KRunReg(reg, interpreter, cf_options)
   if len(keys(a:cf_options))
     let l:cf_options = <SID>prepareOptions(l:cf_options, a:cf_options)
   endif
+  if has_key(l:cf_options, 'snippet')
+    let l:snippet = [l:cf_options['snippet']]
+  else
+    let l:snippet = getline(1, "$")
+  endif
+  if l:cf_options['line_prefix'] != ''
+    call insert(l:snippet, l:cf_options['line_prefix'])
+  endif
   call <SID>FocusMyConsole(l:cf_options['window_open'])
   exec "set ft=".l:cf_options['console_filetype']
   exec "normal ggdG"
-  exec "normal \"".a:reg."p"
-  if l:cf_options['line_prefix'] != ''
-    call append(0, l:cf_options['line_prefix'])
-  endif
   if l:cf_options['input_as_text']
-    let l:str = substitute(getreg(a:reg), '"' , '\\"', "g")
+    let l:str = join(l:snippet, "\n")
+    let l:str = substitute(l:str, '"' , '\\"', "g")
     let l:str = substitute(l:str, '\s*\n\s*$', '', 'g')
     silent exec '%!'.a:interpreter.' "'.l:str.'"'
   else
-    silent exec '%!'.a:interpreter
+    call writefile(l:snippet, l:tmpFile, "")
+    silent exec '%!'.a:interpreter.' '.l:tmpFile
   endif
   execute "normal \<c-w>p"
 endfunction
 
 function! KRunMe(interpreter, ...)
-  silent 1,$y k
   let l:cf_options = a:0 ? a:1 : {}
-  call KRunReg('k', a:interpreter, l:cf_options)
+  call KRunTemp(a:interpreter, l:cf_options)
 endfunction
 
 function! s:RunInteractive(...)
@@ -126,7 +137,7 @@ function! s:RunInteractive(...)
   call inputrestore()
   if l:interpreter != ""
     let l:cf_options = a:0 ? a:1 : {}
-    call KRunReg('k', l:interpreter, l:cf_options)
+    call KRunTemp(l:interpreter, l:cf_options)
   else
     echomsg "Canceled as no interpreter was specified."
   endif
@@ -142,12 +153,13 @@ endfunction
 function! s:RunLine(interpreter, ...)
   call <SID>BufInit()
   let l:interpreter = exists('b:interpreter') ? b:interpreter : a:interpreter
-  normal "kyy
-  if @k[0] == '!'
-    exec @k
+  let l:snippet = getline(".")
+  if l:snippet[0] == '!'
+    exec l:snippet
   else
     let l:cf_options = a:0 ? a:1 : {}
-    call KRunReg('k', l:interpreter, l:cf_options)
+    let l:cf_options['snippet'] = l:snippet
+    call KRunTemp(l:interpreter, l:cf_options)
   endif
 endfunction
 
@@ -185,7 +197,7 @@ autocmd FileType perl       nnoremap <buffer> <leader>r :call KRunMe('perl')<CR>
 autocmd FileType javascript nnoremap <buffer> <leader>r :call KRunMe('node')<CR>
 autocmd FileType coffee     nnoremap <buffer> <leader>r :call KRunMe('coffee -s')<CR>
 autocmd FileType coffee     nnoremap <buffer> <leader>p :call KRunMe('coffee -sbp', {'window_open': 'vert bel', 'console_filetype': 'javascript'})<CR>
-autocmd FileType java       nnoremap <buffer> <leader>r :call KRunMe('groovy -e')<CR>
+autocmd FileType groovy     nnoremap <buffer> <leader>r :call KRunMe('groovy')<CR>
 autocmd FileType jade       nnoremap <buffer> <leader>r :call KRunMe('jade -P', {'window_open': 'vert bel', 'console_filetype': 'html'})<CR>
 autocmd FileType make       nnoremap <buffer> <leader>r :call KRunMe('make -f %')<CR>
 autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd)<CR>
@@ -228,8 +240,7 @@ nnoremap <silent> <leader>t :call <SID>TestScript()<CR>
 function! Rl(ln)
     let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
     if len(l:kargs) > 2
-        let @k = l:kargs[2]
-        call KRunReg('k', l:kargs[1], {'window_open': 'botri 20'})
+        call KRunTemp(l:kargs[1], {'window_open': 'botri 20', 'snippet': l:kargs[2]})
     endif
 endfunction
 com! -nargs=1 -bar Rl call Rl(<q-args>)
