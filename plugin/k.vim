@@ -91,6 +91,14 @@ endfunction
 
 let s:k_vim_dir = substitute($HOME,'\\','/','g')."/.k.vim"
 
+function! KLoadTemp()
+  if ! isdirectory(s:k_vim_dir)
+    call mkdir(s:k_vim_dir)
+  endif
+
+  call append(0, readfile(s:k_vim_dir."/k.snippet"))
+endfunction
+
 function! KRunTemp(interpreter, cf_options)
   if ! isdirectory(s:k_vim_dir)
     call mkdir(s:k_vim_dir)
@@ -206,6 +214,7 @@ autocmd FileType c,cpp      nnoremap <buffer> <leader>rx :let cmd=expand('%:h').
 autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '.expand('%')<Bar>call KRunMe(cmd)<CR>
 autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call KRunMe(cmd)<CR>
 nnoremap <silent> <space><leader> :call KCloseConsole()<CR>
+nnoremap <silent> <leader>L :call KLoadTemp()<CR>
 com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>)
 com! -nargs=* -complete=command -bar Ri call <SID>ReadExCmd(<q-args>)
 com! -nargs=1 -complete=customlist,GetFileTypes Ft let &ft=<f-args>
