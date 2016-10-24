@@ -205,7 +205,7 @@ autocmd FileType perl       nnoremap <buffer> <leader>r :call KRunMe('perl')<CR>
 autocmd FileType javascript nnoremap <buffer> <leader>r :call KRunMe('node')<CR>
 autocmd FileType coffee     nnoremap <buffer> <leader>r :call KRunMe('coffee -s')<CR>
 autocmd FileType coffee     nnoremap <buffer> <leader>p :call KRunMe('coffee -sbp', {'window_open': 'vert bel', 'console_filetype': 'javascript'})<CR>
-autocmd FileType groovy     nnoremap <buffer> <leader>r :call KRunMe('groovy')<CR>
+autocmd FileType groovy     nnoremap <buffer> <leader>r :call KRunMe('LC_CTYPE=UTF-8 groovy')<CR>
 autocmd FileType jade       nnoremap <buffer> <leader>r :call KRunMe('jade -P', {'window_open': 'vert bel', 'console_filetype': 'html'})<CR>
 autocmd FileType make       nnoremap <buffer> <leader>r :call KRunMe('make -f %')<CR>
 autocmd FileType cpp        nnoremap <buffer> <leader>rc :w<Bar>let cmd='g++ '.expand('%').' -o '.expand('%:r').'.exe'<Bar>call KRunMe(cmd)<CR>
