@@ -28,24 +28,39 @@ let g:path_separator = '/'
 if has("win32")
   let g:path_separator = '\\'
 endif
-function! s:FocusMyConsole(winOp)
+function! s:FocusMyConsole(winOp, newTab)
+  let l:mw = bufnr('%')
+  if bufname(l:mw) =~ '^\[Scratch\] '
+    return
+  endif
   if !exists('b:lordWin')
-    let l:mw = bufnr('%')
-    if exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
+    if !a:newTab && exists('b:consoleWin') && bufwinnr(b:consoleWin) != -1
       execute bufwinnr(b:consoleWin)."wincmd w"
     else
-      execute "silent ".a:winOp." new [Scratch] for ".bufname(l:mw)."@".l:mw
+      let tmpBuf = '[Scratch] for '.bufname(l:mw)
+      if tmpBuf == '[Scratch] for '
+        let tmpBuf = '[Scratch] from k.vim'
+      endif
+      if a:newTab
+        if bufexists(tmpBuf)
+          execute "bd! ".escape(l:tmpBuf, ' []')
+        endif
+        execute "silent ".a:winOp." tabnew ~/".l:tmpBuf
+      else
+        execute "silent ".a:winOp." new ~/".l:tmpBuf
+      endif
       setlocal enc=utf-8
       setlocal buftype=nofile
-      setlocal nobuflisted
       setlocal noswapfile
       setlocal noreadonly
       setlocal ff=unix
       setlocal nolist
       map <buffer> q :q<CR>
-      let b:lordWin = l:mw
-      let l:cw = bufnr('%')
-      call setbufvar(l:mw, "consoleWin", l:cw)
+      if !a:newTab
+        let b:lordWin = l:mw
+        let l:cw = bufnr('%')
+        call setbufvar(l:mw, "consoleWin", l:cw)
+      endif
     endif
   endif
 endfunction
@@ -67,7 +82,7 @@ endfunction
 function! KReadExCmdIntoConsole(winOp,ft,exCmd)
   let l:result = KRunCmd(a:exCmd)
   let l:mw = bufnr('%')
-  call <SID>FocusMyConsole(a:winOp)
+  call <SID>FocusMyConsole(a:winOp, len(l:result) > 20)
   exec "set ft=".a:ft
   exec "normal gg\"_dG"
   call append(0, l:result)
@@ -119,7 +134,7 @@ function! KRunTemp(interpreter, cf_options)
   if l:cf_options['line_prefix'] != ''
     call insert(l:snippet, l:cf_options['line_prefix'])
   endif
-  call <SID>FocusMyConsole(l:cf_options['window_open'])
+  call <SID>FocusMyConsole(l:cf_options['window_open'], 0)
   exec "set ft=".l:cf_options['console_filetype']
   exec "normal ggdG"
   if l:cf_options['input_as_text']
