@@ -79,10 +79,10 @@ function! KRunCmd(exCmd)
   endif
 endfunction
 
-function! KReadExCmdIntoConsole(winOp,ft,exCmd)
+function! KReadExCmdIntoConsole(winOp, ft, exCmd, thresholdForNewTab)
   let l:result = KRunCmd(a:exCmd)
   let l:mw = bufnr('%')
-  call <SID>FocusMyConsole(a:winOp, len(l:result) > 20)
+  call <SID>FocusMyConsole(a:winOp, a:thresholdForNewTab > 0 && len(l:result) > a:thresholdForNewTab)
   exec "set ft=".a:ft
   exec "normal gg\"_dG"
   call append(0, l:result)
@@ -167,10 +167,10 @@ function! s:RunInteractive(...)
 endfunction
 
 function! s:BufInit()
-    let l:kargs = matchlist(getline(1), '.*\s\+k.vim\s\+\(.\+\)\s\+k.vim.*')
-    if len(l:kargs) > 1
-        exec l:kargs[1]
-    endif
+  let l:kargs = matchlist(getline(1), '.*\s\+k.vim\s\+\(.\+\)\s\+k.vim.*')
+  if len(l:kargs) > 1
+    exec l:kargs[1]
+  endif
 endfunction
 
 function! s:RunLine(interpreter, ...)
@@ -230,21 +230,21 @@ autocmd FileType java       nnoremap <buffer> <leader>rc :w<Bar>let cmd='javac '
 autocmd FileType java       nnoremap <buffer> <leader>rx :let cmd='java '.expand('%:r')<Bar>call KRunMe(cmd)<CR>
 nnoremap <silent> <space><leader> :call KCloseConsole()<CR>
 nnoremap <silent> <leader>L :call KLoadTemp()<CR>
-com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>)
+com! -nargs=* -complete=command -bar Rc call KReadExCmdIntoConsole("botri 10", "", <q-args>, 20)
 com! -nargs=* -complete=command -bar Ri call <SID>ReadExCmd(<q-args>)
 com! -nargs=1 -complete=customlist,GetFileTypes Ft let &ft=<f-args>
-com! -nargs=1 -complete=shellcmd Man call KReadExCmdIntoConsole("botri", "", "!man ".<q-args>)
+com! -nargs=1 -complete=shellcmd Man call KReadExCmdIntoConsole("botri", "", "!man ".<q-args>, 20)
 command! CtrlPK call ctrlp#init(ctrlp#k#id())
 
 " echo Plugins(&rtp, 'colors/ir', 'vim')
 function! Plugins(path, prefix, ext)
-    let cf = globpath(a:path, a:prefix."*.".a:ext)
-    let cl = split(cf, '\n')
-    let cl = map(cl, 'substitute(v:val, ".*[/\\\\]\\(.*\\).'.a:ext.'", "\\1", "g")')
-    if exists('*uniq')
-      let cl = uniq(sort(cl))
-    endif
-    return cl
+  let cf = globpath(a:path, a:prefix."*.".a:ext)
+  let cl = split(cf, '\n')
+  let cl = map(cl, 'substitute(v:val, ".*[/\\\\]\\(.*\\).'.a:ext.'", "\\1", "g")')
+  if exists('*uniq')
+    let cl = uniq(sort(cl))
+  endif
+  return cl
 endfunction
 
 function! GetFileTypes(A,L,P)
@@ -252,19 +252,31 @@ function! GetFileTypes(A,L,P)
 endfunction
 
 function! s:TestScript()
-    let nr = input('TestScript > ', '', 'customlist,GetFileTypes')
-    if nr != ""
-      new
-      set bt=nofile
-      let &ft=nr
-    endif
+  let nr = input('TestScript > ', '', 'customlist,GetFileTypes')
+  if nr != ""
+    new
+    set bt=nofile
+    let &ft=nr
+  endif
 endfunction
 nnoremap <silent> <leader>t :call <SID>TestScript()<CR>
 
 function! Rl(ln)
-    let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
-    if len(l:kargs) > 2
-        call KRunTemp(l:kargs[1], {'window_open': 'botri 20', 'snippet': l:kargs[2]})
-    endif
+  let l:kargs = matchlist(getline(a:ln), '.*\s\+k.vim#\(\S\+\)\s\+\(.\+\)')
+  if len(l:kargs) > 2
+    call KRunTemp(l:kargs[1], {'window_open': 'botri 20', 'snippet': l:kargs[2]})
+  endif
 endfunction
 com! -nargs=1 -bar Rl call Rl(<q-args>)
+
+let s:currentWord = ""
+function! Explain(force)
+  let l:w = expand("<cword>")
+  if a:force == 1 || (len(l:w) > 0 && s:currentWord != l:w)
+    let s:currentWord = l:w
+    call KReadExCmdIntoConsole('', 'oald8', '!kv query "'.g:cloudStorage.'/kdb/oald8/oald8.idx" '.l:w, 0)
+    if executable('say')
+      call job_start('say '.l:w)
+    endif
+  endif
+endfunction
